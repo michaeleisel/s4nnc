@@ -28,4 +28,4 @@ jobs:
 
       - name: Run tests
         run: |
-          "${GITHUB_WORKSPACE}/bin/bazel" test //test:nnc
+          "${GITHUB_WORKSPACE}/bin/bazel" --test_verbose_timeout_warnings test //test:nnc
