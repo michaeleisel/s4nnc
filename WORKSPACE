@@ -23,16 +23,8 @@ nccl_configure(name = "local_config_nccl")
 
 ccv_setting(
     name = "local_config_ccv",
-    have_cblas = True,
-    have_cudnn = True,
-    have_fftw3 = True,
-    have_gsl = True,
-    have_libjpeg = True,
-    have_libpng = True,
-    have_nccl = True,
+    have_accelerate_framework = True,
     have_pthread = True,
-    use_dispatch = True,
-    use_openmp = True,
 )
 
 git_repository(

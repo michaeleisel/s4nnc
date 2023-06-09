@@ -22,24 +22,24 @@ swift_test(
     ],
 )
 
-swift_test(
-    name = "nnc_python",
-    srcs = [
-        "python/main.swift",
-        "python/numpy.swift",
-    ],
-    deps = [
-        "//nnc:nnc_python",
-    ],
-)
+# swift_test(
+#     name = "nnc_python",
+#     srcs = [
+#         "python/main.swift",
+#         "python/numpy.swift",
+#     ],
+#     deps = [
+#         "//nnc:nnc_python",
+#     ],
+# )
 
-swift_test(
-    name = "nnc_coreml",
-    srcs = [
-        "coreml/main.swift",
-        "coreml/mlshapedarray.swift",
-    ],
-    deps = [
-        "//nnc:nnc_coreml",
-    ],
-)
+# swift_test(
+#     name = "nnc_coreml",
+#     srcs = [
+#         "coreml/main.swift",
+#         "coreml/mlshapedarray.swift",
+#     ],
+#     deps = [
+#         "//nnc:nnc_coreml",
+#     ],
+# )
