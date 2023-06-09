@@ -163,22 +163,7 @@ private let zipDecode:
     guard let data = data, let dimensions = dimensions, let decoded = decoded,
       let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
-    let nextIn = data.assumingMemoryBound(to: UInt8.self)
-    let nextOut = decoded.assumingMemoryBound(to: UInt8.self)
-    var stream = compression_stream(
-      dst_ptr: nextOut, dst_size: decodedSize[0], src_ptr: nextIn, src_size: dataSize, state: nil)
-    var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB)
-    guard status != COMPRESSION_STATUS_ERROR else { return 0 }
-    defer { compression_stream_destroy(&stream) }
-    stream.src_ptr = nextIn
-    stream.src_size = dataSize
-    stream.dst_ptr = nextOut
-    stream.dst_size = decodedSize[0]
-    repeat {
-      status = compression_stream_process(&stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
-      guard status != COMPRESSION_STATUS_ERROR else { return 0 }
-    } while status == COMPRESSION_STATUS_OK && stream.dst_size > 0
-    decodedSize[0] = decodedSize[0] - stream.dst_size
+    guard unzip(data: data, dataSize: dataSize, unzippedData: decoded, unzippedDataSize: decodedSize) else { return 0 }
     return 1
   }
 

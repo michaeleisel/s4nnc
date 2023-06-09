@@ -350,8 +350,6 @@ final class StoreTests: XCTestCase {
       readoutCodecB = store.codec(for: "b")
       store.write("c", tensor: intTensor)
       readoutCodecC = store.codec(for: "c")
-      store.write("c", tensor: intTensor)
-      readoutCodecC = store.codec(for: "c")
       store.write("d", tensor: tensor16, codec: .ezm8)
       readoutCodecD = store.codec(for: "d")
     }
