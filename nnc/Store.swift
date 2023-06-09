@@ -144,12 +144,10 @@ private let zipEncode:
     guard let data = data, let dimensions = dimensions, let encoded = encoded,
           let encodedSize = encodedSize, dimensionCount > 0
     else { return 0 }
-    var zippedSize = encodedSize[0]
-    guard zip(data: data, dataSize: dataSize, zippedData: encoded, zippedDataSize: &zippedSize) else {
+    guard zip(data: data, dataSize: dataSize, zippedData: encoded, zippedDataSize: encodedSize) else {
       return 0
     }
     identifier?[0] = 0x217
-    encodedSize[0] = zippedSize
     return 1
   }
 
@@ -163,13 +161,27 @@ private let zipDecode:
     in
     guard identifier == 0x217 else { return 0 }
     guard let data = data, let dimensions = dimensions, let decoded = decoded,
-          let decodedSize = decodedSize, dimensionCount > 0
+      let decodedSize = decodedSize, dimensionCount > 0
     else { return 0 }
-    var unzippedDataSize = decodedSize[0]
-    guard unzip(data: data, dataSize: dataSize, unzippedData: decoded, unzippedDataSize: &unzippedDataSize) else { return 0 }
-    decodedSize[0] = unzippedDataSize
+    let nextIn = data.assumingMemoryBound(to: UInt8.self)
+    let nextOut = decoded.assumingMemoryBound(to: UInt8.self)
+    var stream = compression_stream(
+      dst_ptr: nextOut, dst_size: decodedSize[0], src_ptr: nextIn, src_size: dataSize, state: nil)
+    var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB)
+    guard status != COMPRESSION_STATUS_ERROR else { return 0 }
+    defer { compression_stream_destroy(&stream) }
+    stream.src_ptr = nextIn
+    stream.src_size = dataSize
+    stream.dst_ptr = nextOut
+    stream.dst_size = decodedSize[0]
+    repeat {
+      status = compression_stream_process(&stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
+      guard status != COMPRESSION_STATUS_ERROR else { return 0 }
+    } while status == COMPRESSION_STATUS_OK && stream.dst_size > 0
+    decodedSize[0] = decodedSize[0] - stream.dst_size
     return 1
   }
+
 
 func truncatedBits(_ number: UInt16, bitCount: UInt16) -> UInt16 {
   guard bitCount > 0 else { return number }
@@ -270,36 +282,35 @@ private let ezm8Decode:
     return 1
   }
 
-#if canImport(Foundation) && canImport(Compression)
-  import Foundation
+#if canImport(Compression)
   import Compression
 
   func zip(data: UnsafeRawPointer, dataSize: Int, zippedData: UnsafeMutableRawPointer, zippedDataSize: UnsafeMutablePointer<Int>) -> Bool {
+    let outputSize = compression_encode_buffer(
+      zippedData.assumingMemoryBound(to: UInt8.self), zippedDataSize[0],
+      data.assumingMemoryBound(to: UInt8.self), dataSize, nil, COMPRESSION_ZLIB)
+    guard outputSize > 0 else { return false }
+    zippedDataSize[0] = outputSize
+    return true
+  }
+
+  private func unzip(data: UnsafeRawPointer, dataSize: Int, unzippedData: UnsafeMutableRawPointer, unzippedDataSize: UnsafeMutablePointer<Int>) -> Bool {
     let nextIn = data.assumingMemoryBound(to: UInt8.self)
-    let nextOut = zippedData.assumingMemoryBound(to: UInt8.self)
+    let nextOut = unzippedData.assumingMemoryBound(to: UInt8.self)
     var stream = compression_stream(
-      dst_ptr: nextOut, dst_size: zippedDataSize[0], src_ptr: nextIn, src_size: dataSize, state: nil)
+      dst_ptr: nextOut, dst_size: unzippedDataSize[0], src_ptr: nextIn, src_size: dataSize, state: nil)
     var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB)
     guard status != COMPRESSION_STATUS_ERROR else { return false }
     defer { compression_stream_destroy(&stream) }
     stream.src_ptr = nextIn
     stream.src_size = dataSize
     stream.dst_ptr = nextOut
-    stream.dst_size = zippedDataSize[0]
+    stream.dst_size = unzippedDataSize[0]
     repeat {
       status = compression_stream_process(&stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
       guard status != COMPRESSION_STATUS_ERROR else { return false }
     } while status == COMPRESSION_STATUS_OK && stream.dst_size > 0
-    zippedDataSize[0] = zippedDataSize[0] - stream.dst_size
-    return true
-  }
-
-  private func unzip(data: UnsafeRawPointer, dataSize: Int, unzippedData: UnsafeMutableRawPointer, unzippedDataSize: UnsafeMutablePointer<Int>) -> Bool {
-    let data = NSData(bytesNoCopy: UnsafeMutableRawPointer(mutating: data), length: dataSize, deallocator: .none)
-    guard let decompressedData = try? data.decompressed(using: .zlib) else { return false }
-    guard decompressedData.length <= unzippedDataSize[0] else { return false }
-    unzippedDataSize[0] = decompressedData.length
-    memcpy(unzippedData, decompressedData.bytes, decompressedData.length)
+    unzippedDataSize[0] = unzippedDataSize[0] - stream.dst_size
     return true
   }
 
