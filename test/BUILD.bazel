@@ -20,6 +20,7 @@ swift_test(
     deps = [
         "//nnc",
     ],
+    size = "large",
 )
 
 swift_test(
@@ -31,6 +32,7 @@ swift_test(
     deps = [
         "//nnc:nnc_python",
     ],
+    size = "large",
 )
 
 swift_test(
@@ -42,4 +44,5 @@ swift_test(
     deps = [
         "//nnc:nnc_coreml",
     ],
+    size = "large",
 )
